@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ESP32 LED Remote Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  
+  <!-- Font Awesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    :root {
+      --primary-dark: #0b1320;
+      --secondary-dark: #1a2332;
+      --accent-green: #1abc9c;
+      --accent-red: #e74c3c;
+      --accent-purple: #9b59b6;
+      --accent-blue: #3498db;
+      --accent-yellow: #f1c40f;
+      --text-light: #ecf0f1;
+      --text-muted: #bdc3c7;
+      --card-bg: rgba(255, 255, 255, 0.05);
+      --border-radius: 12px;
+      --shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+      --transition: all 0.3s ease;
+    }
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--primary-dark) 0%, #162447 100%);
+      color: var(--text-light);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      margin-bottom: 8px;
+      background: linear-gradient(to right, var(--accent-blue), var(--accent-purple));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      display: inline-block;
+    }
+    
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-bottom: 20px;
+    }
+    
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-bg);
+      padding: 15px 25px;
+      border-radius: var(--border-radius);
+      margin-bottom: 30px;
+      box-shadow: var(--shadow);
+      flex-wrap: wrap;
+      gap: 15px;
+    }
+    
+    .status-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    
+    .status-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background-color: #7f8c8d;
+    }
+    
+    .status-dot.connected {
+      background-color: var(--accent-green);
+      box-shadow: 0 0 8px var(--accent-green);
+    }
+    
+    .status-dot.disconnected {
+      background-color: var(--accent-red);
+    }
+    
+    .dashboard {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 25px;
+      margin-bottom: 30px;
+    }
+    
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      padding: 25px;
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .card:hover {
+      transform: translateY(-5px);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      font-size: 1.3rem;
+      color: var(--accent-blue);
+    }
+    
+    .card-title i {
+      font-size: 1.5rem;
+    }
+    
+    .button-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    button {
+      padding: 16px;
+      border: none;
+      border-radius: var(--border-radius);
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+    
+    button:hover {
+      transform: scale(1.03);
+      opacity: 0.95;
+    }
+    
+    button:active {
+      transform: scale(0.98);
+    }
+    
+    .btn-on {
+      background: linear-gradient(to right, var(--accent-green), #16a085);
+      color: white;
+    }
+    
+    .btn-off {
+      background: linear-gradient(to right, var(--accent-red), #c0392b);
+      color: white;
+    }
+    
+    .btn-pulse {
+      background: linear-gradient(to right, var(--accent-purple), #8e44ad);
+      color: white;
+    }
+    
+    .btn-blue {
+      background: linear-gradient(to right, var(--accent-blue), #2980b9);
+      color: white;
+    }
+    
+    .btn-yellow {
+      background: linear-gradient(to right, var(--accent-yellow), #f39c12);
+      color: #333;
+    }
+    
+    .led-visualization {
+      text-align: center;
+      margin-bottom: 25px;
+    }
+    
+    .led-icon {
+      font-size: 5rem;
+      margin-bottom: 15px;
+      transition: var(--transition);
+    }
+    
+    .led-on {
+      color: var(--accent-yellow);
+      text-shadow: 0 0 20px rgba(241, 196, 15, 0.7);
+    }
+    
+    .led-off {
+      color: var(--text-muted);
+      opacity: 0.3;
+    }
+    
+    .led-pulse {
+      color: var(--accent-purple);
+      animation: pulse 1.5s infinite;
+    }
+    
+    @keyframes pulse {
+      0% { opacity: 0.3; }
+      50% { opacity: 1; }
+      100% { opacity: 0.3; }
+    }
+    
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 15px;
+    }
+    
+    input, select {
+      padding: 15px;
+      border-radius: var(--border-radius);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(0, 0, 0, 0.2);
+      color: var(--text-light);
+      font-size: 1rem;
+    }
+    
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+    
+    .log-container {
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: var(--border-radius);
+      padding: 15px;
+      margin-top: 20px;
+      font-family: monospace;
+      font-size: 0.9rem;
+    }
+    
+    .log-entry {
+      padding: 5px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    
+    .log-time {
+      color: var(--text-muted);
+      margin-right: 10px;
+    }
+    
+    .log-action {
+      color: var(--accent-blue);
+    }
+    
+    .log-value {
+      color: var(--accent-green);
+    }
+    
+    footer {
+      text-align: center;
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+    
+    @media (max-width: 768px) {
+      .dashboard {
+        grid-template-columns: 1fr;
+      }
+      
+      .status-bar {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+      }
+      
+      h1 {
+        font-size: 2rem;
+      }
+    }
+    
+    .toast {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: var(--secondary-dark);
+      padding: 15px 25px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      transform: translateY(100px);
+      opacity: 0;
+      transition: var(--transition);
+      z-index: 1000;
+    }
+    
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+    
+    .toast-success {
+      border-left: 4px solid var(--accent-green);
+    }
+    
+    .toast-error {
+      border-left: 4px solid var(--accent-red);
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <header>
+      <h1><i class="fas fa-microchip"></i> ESP32 LED Control</h1>
+      <p class="subtitle">Remote control dashboard for ESP32 connected devices</p>
+    </header>
+    
+    <div class="status-bar">
+      <div class="status-item">
+        <div class="status-dot" id="connectionStatus"></div>
+        <span id="connectionText">Connecting to Firebase...</span>
+      </div>
+      <div class="status-item">
+        <i class="fas fa-lightbulb"></i>
+        <span id="ledStatusText">LED Status: Unknown</span>
+      </div>
+      <div class="status-item">
+        <i class="fas fa-clock"></i>
+        <span id="lastUpdate">Last update: --</span>
+      </div>
+    </div>
+    
+    <div class="dashboard">
+      <!-- LED Control Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-sliders-h"></i>
+          <h3>Basic Controls</h3>
+        </div>
+        
+        <div class="led-visualization">
+          <div class="led-icon" id="ledVisual">
+            <i class="fas fa-lightbulb"></i>
+          </div>
+          <div id="ledModeText">Mode: Idle</div>
+        </div>
+        
+        <div class="button-group">
+          <button class="btn-on" onclick="setState(true)">
+            <i class="fas fa-power-off"></i> TURN LED ON
+          </button>
+          <button class="btn-off" onclick="setState(false)">
+            <i class="fas fa-times-circle"></i> TURN LED OFF
+          </button>
+          <button class="btn-pulse" onclick="togglePulse()">
+            <i class="fas fa-wave-square"></i> TOGGLE PULSE MODE
+          </button>
+        </div>
+      </div>
+      
+      <!-- Auto-off Settings Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-clock"></i>
+          <h3>Auto-Off Timer</h3>
+        </div>
+        
+        <p style="margin-bottom: 15px; color: var(--text-muted);">
+          Set a timer to automatically turn off the LED after a specified time.
+        </p>
+        
+        <div class="input-group">
+          <div style="display: flex; gap: 10px;">
+            <input type="number" id="sec" placeholder="Seconds" min="1" max="3600" value="10">
+            <select id="timeUnit">
+              <option value="seconds">Seconds</option>
+              <option value="minutes">Minutes</option>
+            </select>
+          </div>
+          
+          <button class="btn-blue" onclick="setAutoOff()">
+            <i class="fas fa-hourglass-start"></i> SET AUTO OFF
+          </button>
+          
+          <button class="btn-yellow" onclick="clearAutoOff()">
+            <i class="fas fa-ban"></i> CLEAR TIMER
+          </button>
+        </div>
+        
+        <div style="margin-top: 20px;">
+          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+            <span>Timer Status:</span>
+            <span id="timerStatus">Not set</span>
+          </div>
+          <div style="display: flex; justify-content: space-between;">
+            <span>Time Remaining:</span>
+            <span id="timeRemaining">--</span>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Additional Features Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-cogs"></i>
+          <h3>Additional Features</h3>
+        </div>
+        
+        <div class="button-group">
+          <button class="btn-blue" onclick="blinkLED(3)">
+            <i class="fas fa-bolt"></i> BLINK 3 TIMES
+          </button>
+          
+          <button class="btn-blue" onclick="blinkLED(5)">
+            <i class="fas fa-bolt"></i> BLINK 5 TIMES
+          </button>
+          
+          <div class="input-group" style="margin-top: 10px;">
+            <label for="brightness">LED Brightness</label>
+            <input type="range" id="brightness" min="0" max="255" value="255" onchange="setBrightness(this.value)">
+            <div style="display: flex; justify-content: space-between;">
+              <span>0%</span>
+              <span id="brightnessValue">100%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Activity Log Card -->
+    <div class="card">
+      <div class="card-title">
+        <i class="fas fa-history"></i>
+        <h3>Activity Log</h3>
+      </div>
+      
+      <div class="log-container" id="activityLog">
+        <div class="log-entry">
+          <span class="log-time">[00:00:00]</span>
+          <span class="log-action">System:</span>
+          <span class="log-value">Dashboard initialized</span>
+        </div>
+      </div>
+      
+      <button style="margin-top: 15px; background: rgba(255,255,255,0.1);" onclick="clearLog()">
+        <i class="fas fa-trash-alt"></i> CLEAR LOG
+      </button>
+    </div>
+    
+    <footer>
+      <p>ESP32 LED Control Dashboard &copy; 2026 | Connected to Firebase Realtime Database</p>
+    </footer>
+  </div>
+  
+  <!-- Toast notification -->
+  <div class="toast" id="toast">
+    <i class="fas fa-check-circle"></i>
+    <span id="toastMessage">Action completed successfully</span>
+  </div>
+  
+  <script>
+    // 🔴 STEP 8: Replace with your Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDe97x3qYbX0kBpbyjz1s6-_FYMUgIAByQ",
+      authDomain: "led-blink-e52b3.firebaseapp.com",
+      databaseURL: "https://led-blink-e52b3-default-rtdb.firebaseio.com",
+      projectId: "led-blink-e52b3",
+      storageBucket: "led-blink-e52b3.firebasestorage.app",
+      messagingSenderId: "179547599118",
+      appId: "1:179547599118:web:14f522245ac8f111eee75f"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    
+    // DOM Elements
+    const ledVisual = document.getElementById('ledVisual');
+    const ledStatusText = document.getElementById('ledStatusText');
+    const ledModeText = document.getElementById('ledModeText');
+    const connectionStatus = document.getElementById('connectionStatus');
+    const connectionText = document.getElementById('connectionText');
+    const lastUpdate = document.getElementById('lastUpdate');
+    const timerStatus = document.getElementById('timerStatus');
+    const timeRemaining = document.getElementById('timeRemaining');
+    const brightnessValue = document.getElementById('brightnessValue');
+    const activityLog = document.getElementById('activityLog');
+    const toast = document.getElementById('toast');
+    const toastMessage = document.getElementById('toastMessage');
+    
+    // State variables
+    let ledState = false;
+    let pulseState = false;
+    let autoOffTime = 0;
+    let autoOffStart = 0;
+    let connectionActive = false;
+    let logEntries = [];
+    
+    // Initialize
+    document.addEventListener('DOMContentLoaded', function() {
+      initFirebaseListeners();
+      updateConnectionStatus(false);
+      addLogEntry("Dashboard initialized", "System");
+      
+      // Check connection status periodically
+      setInterval(() => {
+        const connectedRef = firebase.database().ref(".info/connected");
+        connectedRef.on("value", (snap) => {
+          updateConnectionStatus(snap.val() === true);
+        });
+      }, 2000);
+      
+      // Update time remaining display
+      setInterval(updateTimerDisplay, 1000);
+      
+      // Show initial toast
+      showToast("Dashboard ready. Configure Firebase to connect.", "success");
+    });
+    
+    // Initialize Firebase listeners
+    function initFirebaseListeners() {
+      // Listen for LED state changes
+      db.ref("led/state").on("value", (snapshot) => {
+        const val = snapshot.val();
+        ledState = val === true;
+        updateLEDDisplay();
+        addLogEntry(`LED state: ${ledState ? "ON" : "OFF"}`, "Firebase");
+        updateLastUpdateTime();
+      });
+      
+      // Listen for pulse state changes
+      db.ref("led/pulse").on("value", (snapshot) => {
+        const val = snapshot.val();
+        pulseState = val === true;
+        updateLEDDisplay();
+        addLogEntry(`Pulse mode: ${pulseState ? "ON" : "OFF"}`, "Firebase");
+        updateLastUpdateTime();
+      });
+      
+      // Listen for auto-off changes
+      db.ref("led/autoOff").on("value", (snapshot) => {
+        const val = snapshot.val();
+        autoOffTime = val || 0;
+        autoOffStart = Date.now();
+        updateTimerDisplay();
+        addLogEntry(`Auto-off set to ${val} seconds`, "Firebase");
+        updateLastUpdateTime();
+      });
+    }
+    
+    // Update LED visual display
+    function updateLEDDisplay() {
+      const ledIcon = ledVisual.querySelector('i');
+      
+      // Reset classes
+      ledVisual.className = 'led-icon';
+      
+      if (pulseState) {
+        ledVisual.classList.add('led-pulse');
+        ledStatusText.textContent = "LED Status: Pulsing";
+        ledModeText.textContent = "Mode: Pulse";
+      } else if (ledState) {
+        ledVisual.classList.add('led-on');
+        ledStatusText.textContent = "LED Status: ON";
+        ledModeText.textContent = "Mode: Steady";
+      } else {
+        ledVisual.classList.add('led-off');
+        ledStatusText.textContent = "LED Status: OFF";
+        ledModeText.textContent = "Mode: Off";
+      }
+    }
+    
+    // Update connection status display
+    function updateConnectionStatus(connected) {
+      connectionActive = connected;
+      connectionStatus.className = 'status-dot ' + (connected ? 'connected' : 'disconnected');
+      connectionText.textContent = connected ? 'Connected to Firebase' : 'Disconnected from Firebase';
+    }
+    
+    // Update last update time
+    function updateLastUpdateTime() {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+      lastUpdate.textContent = `Last update: ${timeString}`;
+    }
+    
+    // Update timer display
+    function updateTimerDisplay() {
+      if (autoOffTime > 0 && autoOffStart > 0) {
+        const elapsed = Math.floor((Date.now() - autoOffStart) / 1000);
+        const remaining = autoOffTime - elapsed;
+        
+        if (remaining > 0) {
+          timerStatus.textContent = "Active";
+          timeRemaining.textContent = `${remaining}s remaining`;
+        } else {
+          timerStatus.textContent = "Expired";
+          timeRemaining.textContent = "LED should be off";
+          autoOffTime = 0;
+        }
+      } else {
+        timerStatus.textContent = "Not set";
+        timeRemaining.textContent = "--";
+      }
+    }
+    
+    // LED Control Functions
+    function setState(val) {
+      db.ref("led/state").set(val)
+        .then(() => {
+          addLogEntry(`Set LED to ${val ? "ON" : "OFF"}`, "User");
+          showToast(`LED turned ${val ? "ON" : "OFF"}`, "success");
+        })
+        .catch((error) => {
+          showToast(`Error: ${error.message}`, "error");
+        });
+    }
+    
+    function togglePulse() {
+      const newPulseState = !pulseState;
+      db.ref("led/pulse").set(newPulseState)
+        .then(() => {
+          addLogEntry(`Set pulse mode to ${newPulseState ? "ON" : "OFF"}`, "User");
+          showToast(`Pulse mode ${newPulseState ? "enabled" : "disabled"}`, "success");
+        })
+        .catch((error) => {
+          showToast(`Error: ${error.message}`, "error");
+        });
+    }
+    
+    function setAutoOff() {
+      let sec = parseInt(document.getElementById('sec').value);
+      const timeUnit = document.getElementById('timeUnit').value;
+      
+      if (timeUnit === 'minutes') {
+        sec = sec * 60;
+      }
+      
+      if (sec > 0 && sec <= 3600) {
+        db.ref("led/autoOff").set(sec)
+          .then(() => {
+            addLogEntry(`Set auto-off to ${sec} seconds`, "User");
+            showToast(`Auto-off timer set to ${sec} seconds`, "success");
+          })
+          .catch((error) => {
+            showToast(`Error: ${error.message}`, "error");
+          });
+      } else {
+        showToast("Please enter a value between 1 and 3600 seconds", "error");
+      }
+    }
+    
+    function clearAutoOff() {
+      db.ref("led/autoOff").set(0)
+        .then(() => {
+          autoOffTime = 0;
+          updateTimerDisplay();
+          addLogEntry("Cleared auto-off timer", "User");
+          showToast("Auto-off timer cleared", "success");
+        })
+        .catch((error) => {
+          showToast(`Error: ${error.message}`, "error");
+        });
+    }
+    
+    // Additional Features
+    function blinkLED(times) {
+      // This would need corresponding ESP32 code to handle blink commands
+      db.ref("led/blink").set(times)
+        .then(() => {
+          addLogEntry(`Set blink ${times} times`, "User");
+          showToast(`LED will blink ${times} times`, "success");
+        })
+        .catch((error) => {
+          showToast(`Error: ${error.message}`, "error");
+        });
+    }
+    
+    function setBrightness(value) {
+      // This would need corresponding ESP32 code to handle PWM brightness
+      const percent = Math.round((value / 255) * 100);
+      brightnessValue.textContent = `${percent}%`;
+      
+      db.ref("led/brightness").set(parseInt(value))
+        .then(() => {
+          addLogEntry(`Set brightness to ${percent}%`, "User");
+        })
+        .catch((error) => {
+          console.error("Error setting brightness:", error);
+        });
+    }
+    
+    // Activity Log Functions
+    function addLogEntry(message, source) {
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+      
+      const logEntry = document.createElement('div');
+      logEntry.className = 'log-entry';
+      logEntry.innerHTML = `
+        <span class="log-time">[${timeString}]</span>
+        <span class="log-action">${source}:</span>
+        <span class="log-value">${message}</span>
+      `;
+      
+      activityLog.prepend(logEntry);
+      logEntries.unshift({time: timeString, source, message});
+      
+      // Limit log entries to 20
+      if (logEntries.length > 20) {
+        logEntries.pop();
+        if (activityLog.children.length > 20) {
+          activityLog.removeChild(activityLog.lastChild);
+        }
+      }
+    }
+    
+    function clearLog() {
+      activityLog.innerHTML = '';
+      logEntries = [];
+      addLogEntry("Log cleared", "System");
+      showToast("Activity log cleared", "success");
+    }
+    
+    // Toast notification
+    function showToast(message, type) {
+      toastMessage.textContent = message;
+      toast.className = 'toast';
+      toast.classList.add(`toast-${type}`);
+      
+      setTimeout(() => {
+        toast.classList.add('show');
+      }, 10);
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+    
+    // Utility function to get time string
+    function getCurrentTimeString() {
+      const now = new Date();
+      return now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+    }
+  </script>
+</body>
+</html>
