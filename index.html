@@ -8,6 +8,7 @@
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
   
   <!-- Font Awesome for icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -49,11 +50,89 @@
       padding: 20px;
     }
     
-    header {
-      text-align: center;
+    .header-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       margin-bottom: 30px;
       padding-bottom: 20px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    
+    .header-content {
+      flex: 1;
+      text-align: left;
+    }
+    
+    .auth-container {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    
+    .auth-button {
+      padding: 12px 24px;
+      border: none;
+      border-radius: var(--border-radius);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-light);
+      white-space: nowrap;
+    }
+    
+    .auth-button:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+    
+    .auth-button.signin {
+      background: linear-gradient(to right, var(--accent-green), #16a085);
+    }
+    
+    .auth-button.signout {
+      background: linear-gradient(to right, var(--accent-red), #c0392b);
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: var(--border-radius);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--accent-blue);
+      object-fit: cover;
+    }
+    
+    .user-details {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .user-name {
+      font-weight: 600;
+      color: var(--accent-blue);
+      font-size: 0.95rem;
+    }
+    
+    .user-email {
+      font-size: 0.8rem;
+      color: var(--text-muted);
     }
     
     h1 {
@@ -297,6 +376,21 @@
         gap: 15px;
       }
       
+      .header-container {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+      }
+      
+      .header-content {
+        text-align: center;
+      }
+      
+      .auth-container {
+        width: 100%;
+        justify-content: center;
+      }
+      
       h1 {
         font-size: 2rem;
       }
@@ -331,146 +425,221 @@
     .toast-error {
       border-left: 4px solid var(--accent-red);
     }
+    
+    .login-prompt {
+      text-align: center;
+      padding: 60px 40px;
+      background: var(--card-bg);
+      border-radius: var(--border-radius);
+      margin: 40px auto;
+      max-width: 500px;
+      box-shadow: var(--shadow);
+    }
+    
+    .login-icon {
+      font-size: 4rem;
+      color: var(--accent-blue);
+      margin-bottom: 20px;
+    }
+    
+    .login-title {
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+      color: var(--text-light);
+    }
+    
+    .login-message {
+      color: var(--text-muted);
+      margin-bottom: 30px;
+      line-height: 1.6;
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+    
+    .center-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    
+    .login-button {
+      padding: 16px 32px;
+      font-size: 1.1rem;
+      margin-top: 10px;
+    }
   </style>
 </head>
 
 <body>
   <div class="container">
-    <header>
-      <h1><i class="fas fa-microchip"></i> ESP32 LED Control</h1>
-      <p class="subtitle">Remote control dashboard for ESP32 connected devices</p>
-    </header>
-    
-    <div class="status-bar">
-      <div class="status-item">
-        <div class="status-dot" id="connectionStatus"></div>
-        <span id="connectionText">Connecting to Firebase...</span>
+    <div class="header-container">
+      <div class="header-content">
+        <h1><i class="fas fa-microchip"></i> ESP32 LED Control</h1>
+        <p class="subtitle">Remote control dashboard for ESP32 connected devices</p>
       </div>
-      <div class="status-item">
-        <i class="fas fa-lightbulb"></i>
-        <span id="ledStatusText">LED Status: Unknown</span>
-      </div>
-      <div class="status-item">
-        <i class="fas fa-clock"></i>
-        <span id="lastUpdate">Last update: --</span>
+      
+      <div class="auth-container" id="authContainer">
+        <!-- Auth buttons will be inserted here by JavaScript -->
       </div>
     </div>
     
-    <div class="dashboard">
-      <!-- LED Control Card -->
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-sliders-h"></i>
-          <h3>Basic Controls</h3>
+    <!-- Login prompt (shown when not authenticated) -->
+    <div class="login-prompt" id="loginPrompt">
+      <div class="center-content">
+        <div class="login-icon">
+          <i class="fas fa-lock"></i>
         </div>
-        
-        <div class="led-visualization">
-          <div class="led-icon" id="ledVisual">
-            <i class="fas fa-lightbulb"></i>
-          </div>
-          <div id="ledModeText">Mode: Idle</div>
-        </div>
-        
-        <div class="button-group">
-          <button class="btn-on" onclick="setState(true)">
-            <i class="fas fa-power-off"></i> TURN LED ON
-          </button>
-          <button class="btn-off" onclick="setState(false)">
-            <i class="fas fa-times-circle"></i> TURN LED OFF
-          </button>
-          <button class="btn-pulse" onclick="togglePulse()">
-            <i class="fas fa-wave-square"></i> TOGGLE PULSE MODE
-          </button>
-        </div>
-      </div>
-      
-      <!-- Auto-off Settings Card -->
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-clock"></i>
-          <h3>Auto-Off Timer</h3>
-        </div>
-        
-        <p style="margin-bottom: 15px; color: var(--text-muted);">
-          Set a timer to automatically turn off the LED after a specified time.
+        <h2 class="login-title">Authentication Required</h2>
+        <p class="login-message">
+          Please sign in with Google to access the LED control dashboard and manage your ESP32 devices.
         </p>
-        
-        <div class="input-group">
-          <div style="display: flex; gap: 10px;">
-            <input type="number" id="sec" placeholder="Seconds" min="1" max="3600" value="10">
-            <select id="timeUnit">
-              <option value="seconds">Seconds</option>
-              <option value="minutes">Minutes</option>
-            </select>
-          </div>
-          
-          <button class="btn-blue" onclick="setAutoOff()">
-            <i class="fas fa-hourglass-start"></i> SET AUTO OFF
-          </button>
-          
-          <button class="btn-yellow" onclick="clearAutoOff()">
-            <i class="fas fa-ban"></i> CLEAR TIMER
-          </button>
+        <button class="auth-button signin login-button" onclick="signInWithGoogle()">
+          <i class="fab fa-google"></i> Sign In with Google
+        </button>
+      </div>
+    </div>
+    
+    <!-- Dashboard content (shown when authenticated) -->
+    <div id="dashboardContent" class="hidden">
+      <div class="status-bar">
+        <div class="status-item">
+          <div class="status-dot" id="connectionStatus"></div>
+          <span id="connectionText">Connecting to Firebase...</span>
         </div>
-        
-        <div style="margin-top: 20px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
-            <span>Timer Status:</span>
-            <span id="timerStatus">Not set</span>
-          </div>
-          <div style="display: flex; justify-content: space-between;">
-            <span>Time Remaining:</span>
-            <span id="timeRemaining">--</span>
-          </div>
+        <div class="status-item">
+          <i class="fas fa-lightbulb"></i>
+          <span id="ledStatusText">LED Status: Unknown</span>
+        </div>
+        <div class="status-item">
+          <i class="fas fa-user"></i>
+          <span id="userStatus">Not signed in</span>
+        </div>
+        <div class="status-item">
+          <i class="fas fa-clock"></i>
+          <span id="lastUpdate">Last update: --</span>
         </div>
       </div>
       
-      <!-- Additional Features Card -->
-      <div class="card">
-        <div class="card-title">
-          <i class="fas fa-cogs"></i>
-          <h3>Additional Features</h3>
+      <div class="dashboard">
+        <!-- LED Control Card -->
+        <div class="card">
+          <div class="card-title">
+            <i class="fas fa-sliders-h"></i>
+            <h3>Basic Controls</h3>
+          </div>
+          
+          <div class="led-visualization">
+            <div class="led-icon" id="ledVisual">
+              <i class="fas fa-lightbulb"></i>
+            </div>
+            <div id="ledModeText">Mode: Idle</div>
+          </div>
+          
+          <div class="button-group">
+            <button class="btn-on" onclick="setState(true)">
+              <i class="fas fa-power-off"></i> TURN LED ON
+            </button>
+            <button class="btn-off" onclick="setState(false)">
+              <i class="fas fa-times-circle"></i> TURN LED OFF
+            </button>
+            <button class="btn-pulse" onclick="togglePulse()">
+              <i class="fas fa-wave-square"></i> TOGGLE PULSE MODE
+            </button>
+          </div>
         </div>
         
-        <div class="button-group">
-          <button class="btn-blue" onclick="blinkLED(3)">
-            <i class="fas fa-bolt"></i> BLINK 3 TIMES
-          </button>
+        <!-- Auto-off Settings Card -->
+        <div class="card">
+          <div class="card-title">
+            <i class="fas fa-clock"></i>
+            <h3>Auto-Off Timer</h3>
+          </div>
           
-          <button class="btn-blue" onclick="blinkLED(5)">
-            <i class="fas fa-bolt"></i> BLINK 5 TIMES
-          </button>
+          <p style="margin-bottom: 15px; color: var(--text-muted);">
+            Set a timer to automatically turn off the LED after a specified time.
+          </p>
           
-          <div class="input-group" style="margin-top: 10px;">
-            <label for="brightness">LED Brightness</label>
-            <input type="range" id="brightness" min="0" max="255" value="255" onchange="setBrightness(this.value)">
+          <div class="input-group">
+            <div style="display: flex; gap: 10px;">
+              <input type="number" id="sec" placeholder="Seconds" min="1" max="3600" value="10">
+              <select id="timeUnit">
+                <option value="seconds">Seconds</option>
+                <option value="minutes">Minutes</option>
+              </select>
+            </div>
+            
+            <button class="btn-blue" onclick="setAutoOff()">
+              <i class="fas fa-hourglass-start"></i> SET AUTO OFF
+            </button>
+            
+            <button class="btn-yellow" onclick="clearAutoOff()">
+              <i class="fas fa-ban"></i> CLEAR TIMER
+            </button>
+          </div>
+          
+          <div style="margin-top: 20px;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+              <span>Timer Status:</span>
+              <span id="timerStatus">Not set</span>
+            </div>
             <div style="display: flex; justify-content: space-between;">
-              <span>0%</span>
-              <span id="brightnessValue">100%</span>
+              <span>Time Remaining:</span>
+              <span id="timeRemaining">--</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Additional Features Card -->
+        <div class="card">
+          <div class="card-title">
+            <i class="fas fa-cogs"></i>
+            <h3>Additional Features</h3>
+          </div>
+          
+          <div class="button-group">
+            <button class="btn-blue" onclick="blinkLED(3)">
+              <i class="fas fa-bolt"></i> BLINK 3 TIMES
+            </button>
+            
+            <button class="btn-blue" onclick="blinkLED(5)">
+              <i class="fas fa-bolt"></i> BLINK 5 TIMES
+            </button>
+            
+            <div class="input-group" style="margin-top: 10px;">
+              <label for="brightness">LED Brightness</label>
+              <input type="range" id="brightness" min="0" max="255" value="255" onchange="setBrightness(this.value)">
+              <div style="display: flex; justify-content: space-between;">
+                <span>0%</span>
+                <span id="brightnessValue">100%</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-    
-    <!-- Activity Log Card -->
-    <div class="card">
-      <div class="card-title">
-        <i class="fas fa-history"></i>
-        <h3>Activity Log</h3>
-      </div>
       
-      <div class="log-container" id="activityLog">
-        <div class="log-entry">
-          <span class="log-time">[00:00:00]</span>
-          <span class="log-action">System:</span>
-          <span class="log-value">Dashboard initialized</span>
+      <!-- Activity Log Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-history"></i>
+          <h3>Activity Log</h3>
         </div>
+        
+        <div class="log-container" id="activityLog">
+          <div class="log-entry">
+            <span class="log-time">[00:00:00]</span>
+            <span class="log-action">System:</span>
+            <span class="log-value">Dashboard initialized</span>
+          </div>
+        </div>
+        
+        <button style="margin-top: 15px; background: rgba(255,255,255,0.1);" onclick="clearLog()">
+          <i class="fas fa-trash-alt"></i> CLEAR LOG
+        </button>
       </div>
-      
-      <button style="margin-top: 15px; background: rgba(255,255,255,0.1);" onclick="clearLog()">
-        <i class="fas fa-trash-alt"></i> CLEAR LOG
-      </button>
     </div>
     
     <footer>
@@ -487,7 +656,7 @@
   <script>
     // 🔴 STEP 8: Replace with your Firebase configuration
     const firebaseConfig = {
-      apiKey: ,
+      apiKey: "AIzaSyDe97x3qYbX0kBpbyjz1s6-_FYMUgIAByQ",
       authDomain: "led-blink-e52b3.firebaseapp.com",
       databaseURL: "https://led-blink-e52b3-default-rtdb.firebaseio.com",
       projectId: "led-blink-e52b3",
@@ -499,6 +668,7 @@
     // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     const db = firebase.database();
+    const auth = firebase.auth();
     
     // DOM Elements
     const ledVisual = document.getElementById('ledVisual');
@@ -506,6 +676,7 @@
     const ledModeText = document.getElementById('ledModeText');
     const connectionStatus = document.getElementById('connectionStatus');
     const connectionText = document.getElementById('connectionText');
+    const userStatus = document.getElementById('userStatus');
     const lastUpdate = document.getElementById('lastUpdate');
     const timerStatus = document.getElementById('timerStatus');
     const timeRemaining = document.getElementById('timeRemaining');
@@ -513,6 +684,9 @@
     const activityLog = document.getElementById('activityLog');
     const toast = document.getElementById('toast');
     const toastMessage = document.getElementById('toastMessage');
+    const authContainer = document.getElementById('authContainer');
+    const loginPrompt = document.getElementById('loginPrompt');
+    const dashboardContent = document.getElementById('dashboardContent');
     
     // State variables
     let ledState = false;
@@ -521,12 +695,12 @@
     let autoOffStart = 0;
     let connectionActive = false;
     let logEntries = [];
+    let currentUser = null;
     
     // Initialize
     document.addEventListener('DOMContentLoaded', function() {
-      initFirebaseListeners();
-      updateConnectionStatus(false);
-      addLogEntry("Dashboard initialized", "System");
+      // Initialize auth state listener
+      initAuth();
       
       // Check connection status periodically
       setInterval(() => {
@@ -538,12 +712,100 @@
       
       // Update time remaining display
       setInterval(updateTimerDisplay, 1000);
-      
-      // Show initial toast
-      showToast("Dashboard ready. Configure Firebase to connect.", "success");
     });
     
-    // Initialize Firebase listeners
+    // Initialize authentication
+    function initAuth() {
+      auth.onAuthStateChanged((user) => {
+        if (user) {
+          // User is signed in
+          currentUser = user;
+          updateUIForUser(user);
+          initFirebaseListeners();
+          showToast(`Welcome, ${user.displayName || user.email}!`, "success");
+        } else {
+          // User is signed out
+          currentUser = null;
+          updateUIForNoUser();
+          showToast("Signed out successfully", "success");
+        }
+      });
+    }
+    
+    // Update UI when user is signed in
+    function updateUIForUser(user) {
+      // Update auth buttons
+      authContainer.innerHTML = `
+        <div class="user-info">
+          <img class="user-avatar" src="${user.photoURL || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(user.displayName || user.email) + '&background=3498db&color=fff'}" alt="User Avatar">
+          <div class="user-details">
+            <span class="user-name">${user.displayName || 'User'}</span>
+            <span class="user-email">${user.email}</span>
+          </div>
+        </div>
+        <button class="auth-button signout" onclick="signOut()">
+          <i class="fas fa-sign-out-alt"></i> Sign Out
+        </button>
+      `;
+      
+      // Update status bar
+      userStatus.textContent = `User: ${user.email}`;
+      
+      // Show dashboard, hide login prompt
+      loginPrompt.classList.add('hidden');
+      dashboardContent.classList.remove('hidden');
+      
+      addLogEntry(`User ${user.email} signed in`, "Authentication");
+    }
+    
+    // Update UI when no user is signed in
+    function updateUIForNoUser() {
+      // Update auth buttons
+      authContainer.innerHTML = `
+        <button class="auth-button signin" onclick="signInWithGoogle()">
+          <i class="fab fa-google"></i> Sign In
+        </button>
+      `;
+      
+      // Update status bar
+      userStatus.textContent = "Not signed in";
+      
+      // Show login prompt, hide dashboard
+      loginPrompt.classList.remove('hidden');
+      dashboardContent.classList.add('hidden');
+      
+      addLogEntry("User signed out", "Authentication");
+    }
+    
+    // Sign in with Google
+    function signInWithGoogle() {
+      const provider = new firebase.auth.GoogleAuthProvider();
+      provider.addScope('profile');
+      provider.addScope('email');
+      
+      auth.signInWithPopup(provider)
+        .then((result) => {
+          // Success - handled by auth state listener
+        })
+        .catch((error) => {
+          console.error("Authentication error:", error);
+          showToast(`Sign-in failed: ${error.message}`, "error");
+        });
+    }
+    
+    // Sign out
+    function signOut() {
+      auth.signOut()
+        .then(() => {
+          // Success - handled by auth state listener
+        })
+        .catch((error) => {
+          console.error("Sign out error:", error);
+          showToast(`Sign-out failed: ${error.message}`, "error");
+        });
+    }
+    
+    // Initialize Firebase listeners (only when authenticated)
     function initFirebaseListeners() {
       // Listen for LED state changes
       db.ref("led/state").on("value", (snapshot) => {
@@ -572,6 +834,11 @@
         addLogEntry(`Auto-off set to ${val} seconds`, "Firebase");
         updateLastUpdateTime();
       });
+      
+      // Initial connection status
+      updateConnectionStatus(false);
+      addLogEntry("Dashboard initialized", "System");
+      showToast("Dashboard ready. Configure Firebase to connect.", "success");
     }
     
     // Update LED visual display
@@ -632,6 +899,11 @@
     
     // LED Control Functions
     function setState(val) {
+      if (!currentUser) {
+        showToast("Please sign in to control the LED", "error");
+        return;
+      }
+      
       db.ref("led/state").set(val)
         .then(() => {
           addLogEntry(`Set LED to ${val ? "ON" : "OFF"}`, "User");
@@ -643,6 +915,11 @@
     }
     
     function togglePulse() {
+      if (!currentUser) {
+        showToast("Please sign in to control the LED", "error");
+        return;
+      }
+      
       const newPulseState = !pulseState;
       db.ref("led/pulse").set(newPulseState)
         .then(() => {
@@ -655,6 +932,11 @@
     }
     
     function setAutoOff() {
+      if (!currentUser) {
+        showToast("Please sign in to control the LED", "error");
+        return;
+      }
+      
       let sec = parseInt(document.getElementById('sec').value);
       const timeUnit = document.getElementById('timeUnit').value;
       
@@ -677,6 +959,11 @@
     }
     
     function clearAutoOff() {
+      if (!currentUser) {
+        showToast("Please sign in to control the LED", "error");
+        return;
+      }
+      
       db.ref("led/autoOff").set(0)
         .then(() => {
           autoOffTime = 0;
@@ -691,6 +978,11 @@
     
     // Additional Features
     function blinkLED(times) {
+      if (!currentUser) {
+        showToast("Please sign in to control the LED", "error");
+        return;
+      }
+      
       // This would need corresponding ESP32 code to handle blink commands
       db.ref("led/blink").set(times)
         .then(() => {
@@ -703,6 +995,11 @@
     }
     
     function setBrightness(value) {
+      if (!currentUser) {
+        showToast("Please sign in to control the LED", "error");
+        return;
+      }
+      
       // This would need corresponding ESP32 code to handle PWM brightness
       const percent = Math.round((value / 255) * 100);
       brightnessValue.textContent = `${percent}%`;
@@ -770,5 +1067,4 @@
     }
   </script>
 </body>
-
 </html>
